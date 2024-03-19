@@ -1,0 +1,35 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: 123456
+    volumes:
+      - ./prisma/data:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+  app:
+    platform: "linux/amd64"
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ""
+    working_dir: /app
+    ports:
+      - "3000:3000"
+    image: t3-app
+    environment:
+      - DATABASE_URL=postgresql://postgres:123456@db:5432/postgres?schema=public
+      - NEXTAUTH_SECRET=X7XeUxY50gdmgeqeP+QXk/RMhvId63wNNd8PHtiorpo=
+      - NEXTAUTH_URL=http://localhost:3000
+      - GOOGLE_CLIENT_ID=<secret>
+      - GOOGLE_CLIENT_SECRET=<secret>
+      - RESEND_API_KEY=re_WuXbukXG_EGqaomiSUy7mBc1KjkRB818z
+      - UPLOADTHING_SECRET=<secret>
+      - UPLOADTHING_APP_ID=gwa95bcg2x
+      - UPLOADTHING_URL=http://localhost:3000
+    depends_on:
+      - db

@@ -1,0 +1,234 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+    provider = "prisma-client-js"
+    // previewFeatures = ["jsonProtocol"]
+}
+
+datasource db {
+    provider = "postgresql"
+    // NOTE: When using mysql or sqlserver, uncomment the @db.Text annotations in model Account below
+    // Further reading:
+    // https://next-auth.js.org/adapters/prisma#create-the-prisma-schema
+    // https://www.prisma.io/docs/reference/api-reference/prisma-schema-reference#string
+    url      = env("DATABASE_URL")
+}
+
+model Example {
+    id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+    createdAt DateTime @default(now()) @map("created_at")
+    updatedAt DateTime @updatedAt @map("updated_at")
+
+    @@map(name: "example")
+}
+
+// Necessary for Next auth
+model Account {
+    id                String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+    userId            String  @map("user_id") @db.Uuid
+    type              String
+    provider          String
+    providerAccountId String  @map("provider_account_id")
+    refresh_token     String? @db.Text
+    access_token      String? @db.Text
+    expires_at        Int?
+    token_type        String?
+    scope             String?
+    id_token          String? // @db.Text
+    session_state     String?
+    user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@unique([provider, providerAccountId])
+    @@map(name: "account")
+}
+
+model Session {
+    id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+    sessionToken String   @unique @map("session_token")
+    userId       String   @map("user_id") @db.Uuid
+    expires      DateTime
+    user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@map(name: "session")
+}
+
+model User {
+    id                  String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+    gender              String?
+    name                String?
+    phone               String?
+    cardNum             String?
+    expiryDate          String?
+    cardCVC             String?
+    cardHoldName        String?
+    email               String?              @unique
+    emailVerified       DateTime?            @map("email_verified")
+    image               String?
+    billingAddress      String?              @map("billing_address")
+    shippingAddress     String?              @map("shipping_address")
+    billingPostcode     String?
+    shippingPostcode    String?
+    points              Int                  @default(0)
+    registrationDate    DateTime             @default(now()) @map("registration_date")
+    accounts            Account[]
+    sessions            Session[]
+    events              Event[]
+    userFavouriteEvents UserFavouriteEvent[]
+    notifications       Notification[]
+    reviews             Review[]
+
+    @@map(name: "user")
+}
+
+model VerificationToken {
+    identifier String   @id
+    token      String   @unique
+    expires    DateTime
+
+    @@unique([identifier, token])
+    @@map(name: "verification_token")
+}
+
+model Event {
+    id                  String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+    createdUser         String               @map("created_user") @db.Uuid
+    title               String
+    category            String
+    description         String
+    type                String
+    cover_image         String               @map("cover_image")
+    images              String[]             @default([])
+    venue               String
+    startTime           DateTime             @map("start_time")
+    endTime             DateTime             @map("end_time")
+    isDraft             Boolean              @default(false) @map("is_draft")
+    user                User                 @relation(fields: [createdUser], references: [id])
+    eventStatus         Int                  @default(0) @map("event_status")
+    userFavouriteEvents UserFavouriteEvent[] 
+    tickets             Ticket[]
+    reviews             Review[]
+    orders              Order[]
+    seats               Seat[]
+    isOnline            Boolean              @default(false) @map("is_online")
+    seatRow             Int                  @default(0) @map("seat_row")
+    seatColumn          Int                  @default(0) @map("seat_column")
+
+    @@map(name: "event")
+}
+
+model UserFavouriteEvent {
+    id      String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+    userId  String @db.Uuid
+    eventId String @db.Uuid
+    user    User   @relation(fields: [userId], references: [id])
+    event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+    @@map(name: "user_favourite_event")
+}
+
+model Notification {
+    id       Int      @id @default(autoincrement())
+    userId   String   @map("user_id") @db.Uuid
+    sentDate DateTime @default(now()) @map("sent_date")
+    content  String
+    user     User     @relation(fields: [userId], references: [id])
+
+    @@map(name: "notification")
+}
+
+model Badge {
+    id        Int       @id @default(autoincrement())
+    userId    String    @map("user_id") @db.Uuid
+    typeId    Int       @unique @map("type_id")
+    awardDate DateTime  @default(now()) @map("award_date")
+    badgeType BadgeType @relation(fields: [typeId], references: [id])
+
+    @@map(name: "badget")
+}
+
+model BadgeType {
+    id          Int    @id @default(autoincrement())
+    title       String
+    image       String
+    discription String
+    badge       Badge?
+
+    @@map(name: "badge_type")
+}
+
+model Order {
+    id               String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+    userId           String        @map("user_id") @db.Uuid
+    name             String
+    email            String
+    phone            String
+    shippingAddress  String        @map("shipping_address")
+    billingAddress   String        @map("billing_address")
+    eventId          String        @map("event_id") @db.Uuid
+    cardNum          String        @map("card_number")
+    expiryDate       String        @map("expiry_date")
+    cardCVV          String        @map("card_cvv")
+    bill             Float
+    bookDate         DateTime      @default(now()) @map("book_date")
+    bookStatus       Boolean       @default(false) @map("book_status")
+    cancellationDate DateTime?     @default(now()) @map("cancellation_date")
+    event            Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+    orderTickets     OrderTicket[]
+    seats            Seat[]
+
+    @@map(name: "order")
+}
+
+model OrderTicket {
+    id           Int    @id @default(autoincrement())
+    orderId      String @map("order_id") @db.Uuid
+    ticketId     Int    @map("ticket_id")
+    ticketNumber Int    @map("ticket_number")
+    order        Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+    ticket       Ticket @relation(fields: [ticketId], references: [id])
+
+    @@map(name: "order_ticket")
+}
+
+model Ticket {
+    id                Int           @id @default(autoincrement())
+    eventId           String        @map("event_id") @db.Uuid
+    event             Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+    ticketName        String        @map("ticket_name")
+    ticketDescription String        @map("ticket_description")
+    price             Float
+    capacity          Int
+    remaining         Int
+    orderTickets      OrderTicket[]
+
+    @@map(name: "ticket")
+}
+
+model Seat {
+    id      Int     @id @default(autoincrement())
+    eventId String  @map("event_id") @db.Uuid
+    row     Int
+    col     Int
+    status  String
+    orderId String? @map("order_id") @db.Uuid
+    order   Order?  @relation(fields: [orderId], references: [id])
+    event   Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+    @@unique([eventId, row, col], name: "eventId_row_col")
+    @@map(name: "seat")
+}
+
+model Review {
+    id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+    eventId       String   @map("event_id") @db.Uuid
+    userId        String   @map("user_id") @db.Uuid
+    reviewDate    DateTime @default(now()) @map("review_date")
+    reviewContent String   @map("review_content")
+    rating        Int
+    hostResponse  String?  @map("host_response")
+    event         Event    @relation(fields: [eventId], references: [id])
+    user          User     @relation(fields: [userId], references: [id])
+
+    @@map(name: "review")
+}
